@@ -40,6 +40,7 @@ Thirdparty/g2o/lib/
 Vocabulary/ORBvoc.txt
 build/
 
+venv/
 lib/
 
 cmake_modules/

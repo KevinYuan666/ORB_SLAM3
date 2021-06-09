@@ -42,6 +42,7 @@ build/
 
 venv/
 lib/
+.idea/
 
 cmake_modules/
 cmake-build-debug/

@@ -3,6 +3,8 @@ import os
 from orbslam3_ns2s import  ns2s
 import glob
 import shutil
+import math
+
 
 #yaml文件处理
 def changeYamlConfig(path, key, value):
@@ -30,11 +32,13 @@ def changeYamlConfig(path, key, value):
 def copy_rmse_result(path,newpath):             #定义函数名称
     os.makedirs(newpath)
     for name in os.listdir(path):      #遍历列表下的文件名
-        if name.endswith('.pdf') or name.endswith('.txt'):
-             shutil.copyfile(os.path.join(path,name),os.path.join(newpath,name)) # 复制并重命名
+        if name.endswith('.pdf'):
+             shutil.copyfile(os.path.join(path,name),os.path.join(newpath,name)) # 复制PDF并重命名
+    for file in glob.glob(path + "f_dataset-*.txt"):
+        shutil.copyfile(os.path.join(path, file), os.path.join(newpath, file))  # 复制数据并重命名
 
-#设置参数并修改yaml文件
-def noise_para_settings(noise_scalar,para,path):  #para:需要改变的参数
+# noise walk分别设置的函数
+def noise_para_settings(noise_scalar,para,yaml_path):  #para:需要改变的参数
     #baseline
     NoiseGyro= 1.7e-4  # 1.6968e-04
     NoiseAcc= 2.0000e-3  # 2.0e-3
@@ -42,12 +46,12 @@ def noise_para_settings(noise_scalar,para,path):  #para:需要改变的参数
     value=[]
     if para=='NoiseGyro':
         value = NoiseGyro * noise_scalar
-        changeYamlConfig(path, 'IMU.NoiseGyro', value)
+        changeYamlConfig(yaml_path, 'IMU.NoiseGyro', value)
     elif para=='NoiseAcc':
         value = NoiseAcc * noise_scalar
-        changeYamlConfig(path, 'IMU.NoiseAcc', value)
+        changeYamlConfig(yaml_path, 'IMU.NoiseAcc', value)
 
-def walk_para_settings(walk_scalar, para, path):  # para:需要改变的参数
+def walk_para_settings(walk_scalar, para, yaml_path):  # para:需要改变的参数
     # baseline
     GyroWalk = 1.9393e-05
     AccWalk = 3.0000e-03  # 3e-03
@@ -55,11 +59,22 @@ def walk_para_settings(walk_scalar, para, path):  # para:需要改变的参数
     value = []
     if para == 'GyroWalk':
         value = GyroWalk * walk_scalar
-        changeYamlConfig(path, 'IMU.GyroWalk', value)
+        changeYamlConfig(yaml_path, 'IMU.GyroWalk', value)
     elif para == 'AccWalk':
         value = AccWalk * walk_scalar
-        changeYamlConfig(path, 'IMU.AccWalk', value)
+        changeYamlConfig(yaml_path, 'IMU.AccWalk', value)
 
+#同时改变4个参数
+def all_para_settings(scale , yaml_path):
+    NoiseGyro=1.7e-4  # 1.6968e-04
+    NoiseAcc = 2.0000e-3  # 2.0e-3
+    GyroWalk = 1.9393e-05
+    AccWalk = 3.0000e-03  # 3e-03
+
+    changeYamlConfig(yaml_path, 'IMU.NoiseGyro', NoiseGyro * scale)
+    changeYamlConfig(yaml_path, 'IMU.NoiseAcc', NoiseAcc * scale)
+    changeYamlConfig(yaml_path, 'IMU.GyroWalk', GyroWalk * scale)
+    changeYamlConfig(yaml_path, 'IMU.AccWalk', AccWalk * scale)
 
 def para_resume(yaml_path):
     NoiseGyro=1.7e-4  # 1.6968e-04
@@ -72,52 +87,23 @@ def para_resume(yaml_path):
     changeYamlConfig(yaml_path, 'IMU.GyroWalk', GyroWalk)
     changeYamlConfig(yaml_path, 'IMU.AccWalk', AccWalk)
 
-def clear_rpg_results(slam_dir, rpg_data_dir):
-    #claer slam
-    #clear rpg
-    for i, dir in enumerate(os.listdir(rpg_data_dir)):
-        shutil.rmtree(rpg_data_dir+dir+'/saved_results')
-        for j in glob.glob(rpg_data_dir+dir+'/stamped_traj*.txt'):
-            os.remove(j)
-
 
 
 if __name__ == '__main__':
-    slam_dir=('/home/kevin/documents/evaluate_euroc/ORB_SLAM3_1/')
-    rpg_dir=('/home/kevin/documents/evaluate_euroc/rpg_trajectory_evaluation_1/')
+    #目标：IMU噪声参数四个参数同时调，scale : 10^-3 to 10^3 每种跑10次
 
-    rpg_data_dir = rpg_dir + 'results/euroc_monoi'    #用于调用rpg main
-
+    slam_dir=('/home/wuhan2020/yqc/ORB_SLAM3/')
     yaml_path = slam_dir+'Examples/Monocular-Inertial/EuRoC.yaml'
+    #设置噪声参数scale
+    scale_all = []
+    for i,num in enumerate(range(-3,4)):
+        scale_all.append(math.pow(10,num))
 
-    noiseScalar=[0.1, 0.2, 0.5, 1, 2, 5, 10]  #  7   4:baseline
-    walkScalar =[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]  #10   7:baseline
+    for scale in scale_all:
+        all_para_settings(scale, yaml_path)
+        for round in range(1,11):  #跑10次重复
+            subprocess.run(slam_dir + 'Examples/euroc_examples_eval.sh')  # 运行slam
 
-
-    round= 10   #轨迹总个数
-    para='AccWalk'
-    para_type='walk'
-    para_num=len(walkScalar)
-
-    #para evaluation
-    para_resume(yaml_path)
-
-    for i in range(para_num):
-        if para_type == 'walk':
-            walk_para_settings(walkScalar[i], para, yaml_path)
-        elif para_type == 'noise':
-            noise_para_settings(noiseScalar[i], para, yaml_path)
-
-        for j in range(round):
-            subprocess.run(slam_dir + 'euroc_examples.sh')  # 运行slam
-            try:
-                ns2s(slam_dir, rpg_dir + 'results/euroc_monoi/AccWalk/monoi'+str(i)+'/', j)   #设置数据
-            except:
-                subprocess.run(slam_dir + 'euroc_examples.sh')  # 运行slam
-                ns2s(slam_dir, rpg_dir + 'results/euroc_monoi/AccWalk/monoi' + str(i) + '/', j)
-
-            for file in glob.glob(slam_dir + "*_dataset-*.txt"):   #clear slam traj result
-                os.remove(file)
 
 
     # subprocess.run('python2 ' + rpg_dir + 'scripts/analyze_trajectories.py euroc_monoi.yaml --output_dir=' + rpg_data_dir + ' --results_dir=' + rpg_data_dir + ' --platform laptop --odometry_error_per_dataset --plot_trajectories --recalculate_errors --rmse_table --rmse_boxplot --overall_odometry_error --mul_trials=' + str(round), shell=True)  # 运行rpg评估   参数设置

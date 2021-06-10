@@ -43,6 +43,7 @@ build/
 venv/
 lib/
 .idea/
+Datasets/
 
 cmake_modules/
 cmake-build-debug/

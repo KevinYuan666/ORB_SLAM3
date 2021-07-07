@@ -4,6 +4,7 @@ from orbslam3_ns2s import  ns2s
 import glob
 import shutil
 import math
+import numpy as np
 
 
 #yaml文件处理
@@ -95,12 +96,9 @@ if __name__ == '__main__':
     slam_dir=('/home/wuhan2020/yqc/ORB_SLAM3/')
     yaml_path = slam_dir+'Examples/Monocular-Inertial/EuRoC.yaml'
     #生成噪声参数scale
-    scale_all = []
-    for i in [ 0.001, 0.01,0.1 ,1, 10, 100]:
-        for j in [1, 2 ,5]:
-            scale_all.append(i*j)
-    scale_all.append( 1000)
-    scale_all.sort()
+    a = np.arange(-1, 1.2, 0.2)
+    np.set_printoptions(suppress=True)
+    scale_all = 10**a
 
     for scale in scale_all:
         all_para_settings(scale, yaml_path)

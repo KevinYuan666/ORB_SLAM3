@@ -42,3 +42,4 @@ if __name__ == '__main__':
                                       "stamped_traj_estimate" + str(round) + ".txt")
 
                 #注意算法monoi1路径已修改
+                #可以添加goundtruth和config移动的代码

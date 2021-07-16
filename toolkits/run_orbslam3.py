@@ -34,7 +34,9 @@ def copy_rmse_result(oldpath,newpath):             #定义函数名称
         os.makedirs(newpath)
     for file in glob.glob(oldpath + "/f_dataset-*.txt"):
         shutil.copyfile(os.path.join(oldpath, file), os.path.join(newpath, file.replace(oldpath+'/','')))  # 复制数据并重命名
-        os.remove(os.path.join(oldpath, file))
+        os.remove(file)
+        os.remove(file.replace('f_dataset','kf_dataset'))
+        print(file.replace(oldpath,'') + ' has been removed!')
 
 # noise walk分别设置的函数
 def noise_para_settings(noise_scalar,para,yaml_path):  #para:需要改变的参数
@@ -75,6 +77,27 @@ def all_para_settings(scale , yaml_path):
     changeYamlConfig(yaml_path, 'IMU.GyroWalk', GyroWalk * scale)
     changeYamlConfig(yaml_path, 'IMU.AccWalk', AccWalk * scale)
 
+def single_para_settings(scale , yaml_path , para_type):
+    NoiseGyro = 1.7e-4  # 1.6968e-04
+    NoiseAcc = 2.0000e-3  # 2.0e-3
+    GyroWalk = 1.9393e-05
+    AccWalk = 3.0000e-03  # 3e-03
+
+    if para_type == 'NoiseGyro':
+        NoiseGyro = NoiseGyro * scale
+    elif para_type == 'NoiseAcc':
+        NoiseAcc = NoiseAcc * scale
+    elif para_type == 'GyroWalk':
+        GyroWalk = GyroWalk * scale
+    elif para_type == 'AccWalk':
+        AccWalk = AccWalk * scale
+
+
+    changeYamlConfig(yaml_path, 'IMU.NoiseGyro', NoiseGyro)
+    changeYamlConfig(yaml_path, 'IMU.NoiseAcc', NoiseAcc)
+    changeYamlConfig(yaml_path, 'IMU.GyroWalk', GyroWalk)
+    changeYamlConfig(yaml_path, 'IMU.AccWalk', AccWalk)
+
 def para_resume(yaml_path):
     NoiseGyro=1.7e-4  # 1.6968e-04
     NoiseAcc = 2.0000e-3  # 2.0e-3
@@ -94,16 +117,20 @@ if __name__ == '__main__':
     slam_dir='/home/wuhan2020/yqc/ORB_SLAM3'
     save_dir= '/home/wuhan2020/yqc/ORB_SLAM3/monoi_result'
     yaml_path = slam_dir+'/Examples/Monocular-Inertial/EuRoC.yaml'
+    noise_type = 'NoiseGyro'
     #生成噪声参数scale
-    a = np.arange(-1, 1.2, 0.2)
+    # a = np.arange(-1, 1.2, 0.2)   #small scale
+    a = np.arange(-1.8, 2, 0.4)    #single parameter
     np.set_printoptions(suppress=True)
     scale_all = 10**a
-
+    print('type: '+ noise_type)
     for num,scale in enumerate(scale_all):
-        all_para_settings(scale, yaml_path)
+        single_para_settings(scale, yaml_path, noise_type)
+        print('scale: '+ str(scale))
         for round in range(0,5):  #跑10次重复
             subprocess.run(slam_dir + '/Examples/euroc_test.sh')  # 运行slam
-            copy_rmse_result(slam_dir+ '/Examples', os.path.join(save_dir,'scale'+str(num),'round' + str(round)))  # 注意跑第二个参数的时候修改
+            copy_rmse_result(slam_dir+ '/Examples', os.path.join(save_dir,'scale'+str(num),'round' + str(round)))
+            print ('saved to'+' scale'+str(num),'round' + str(round))
 
 
     # subprocess.run('python2 ' + rpg_dir + 'scripts/analyze_trajectories.py euroc_monoi.yaml --output_dir=' + rpg_data_dir + ' --results_dir=' + rpg_data_dir + ' --platform laptop --odometry_error_per_dataset --plot_trajectories --recalculate_errors --rmse_table --rmse_boxplot --overall_odometry_error --mul_trials=' + str(round), shell=True)  # 运行rpg评估   参数设置

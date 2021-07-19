@@ -113,11 +113,11 @@ def para_resume(yaml_path):
 
 if __name__ == '__main__':
     #目标：IMU噪声参数四个参数同时调，scale : 10^-3 to 10^3 每种跑10次
-
-    slam_dir='/home/wuhan2020/yqc/ORB_SLAM3'
-    save_dir= '/home/wuhan2020/yqc/ORB_SLAM3/monoi_result'
+    noise_type = 'AccWalk'
+    slam_dir='/home/wuhan2021/yqc/ORB_SLAM3'
+    save_dir= slam_dir + '/result_' + noise_type
     yaml_path = slam_dir+'/Examples/Monocular-Inertial/EuRoC.yaml'
-    noise_type = 'NoiseGyro'
+
     #生成噪声参数scale
     # a = np.arange(-1, 1.2, 0.2)   #small scale
     a = np.arange(-1.8, 2, 0.4)    #single parameter
